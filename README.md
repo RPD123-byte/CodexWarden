@@ -34,14 +34,7 @@ That motivation drives the safety model:
 - GUI shutdown is graceful only. The supervisor never force-kills a stubborn GUI by
   default, and library shutdown leaves the shared daemon running for the GUI.
 
-## Status and scope
-
-The embedded library is complete and tested. A standalone daemon executable is not part
-of this repository yet, but it is intentionally a thin future packaging layer: create a
-process, call `CodexControl::run`, hold the returned `Handle`, and expose whatever IPC or
-service API the host application needs.
-
-Current scope:
+## Scope
 
 - macOS;
 - one local user;
