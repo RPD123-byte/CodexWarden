@@ -1,0 +1,22 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  rust-and-pinned-schema:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Install pinned Codex
+        run: npm install --global @openai/codex@0.144.6
+      - name: Verify pinned schema is reproducible
+        env:
+          CODEX_BIN: codex
+        run: ./scripts/regenerate-schema.sh
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace

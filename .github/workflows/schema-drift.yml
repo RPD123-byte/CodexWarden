@@ -1,0 +1,23 @@
+name: upstream-schema-drift
+on:
+  schedule:
+    - cron: "23 10 * * 1"
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install latest Codex
+        run: npm install --global @openai/codex@latest
+      - name: Generate latest schema
+        run: codex app-server generate-json-schema --experimental --out latest-schema
+      - name: Produce drift report
+        run: diff -ru src/protocol/schema/upstream latest-schema > schema-drift.patch || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: latest-schema-drift
+          path: |
+            latest-schema
+            schema-drift.patch

@@ -1,0 +1,12 @@
+{
+  "name": "codex-app-control-dev-tools",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "openspec:validate": "openspec validate codex-control-daemon --strict"
+  },
+  "description": "Optional repository authoring tools; not a runtime dependency of the Rust library.",
+  "devDependencies": {
+    "@fission-ai/openspec": "^1.6.0"
+  }
+}

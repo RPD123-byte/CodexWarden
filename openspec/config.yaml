@@ -1,0 +1,52 @@
+schema: spec-driven
+
+context: |
+  Project: codex-app-control — a lightweight Rust control library embedded by an
+  always-on downstream consumer. It observes active sessions on Codex's managed
+  app-server daemon and lets the consumer correlate expressions with live events and
+  safely interrupt/steer an explicitly selected turn in real time. A standalone binary
+  is a later packaging change.
+
+  Tech stack: Rust, Cargo workspace (crate-per-concern, mirroring codex-rs). tokio
+  (async runtime), serde/serde_json (typed protocol), tokio-tungstenite (WebSocket)
+  over tokio UnixStream, tracing (observability). macOS-only for now.
+
+  How it works (verified empirically, see experimentation/README.md):
+  - Codex ships a "managed app-server daemon" exposing a local unix socket at
+    ~/.codex/app-server-control/app-server-control.sock, spoken as WebSocket-framed
+    JSON-RPC (URL path /rpc). Requires a standalone Codex install under
+    ~/.codex/packages/standalone/.
+  - The ChatGPT GUI, launched with env CODEX_APP_SERVER_USE_LOCAL_DAEMON=1 (and a
+    version-compatible daemon running), connects to that daemon instead of spawning
+    private stdio engines — so its chat sessions live in the shared daemon.
+  - Any second client on that socket can observe active shared-daemon threads and act on
+    a thread/turn pair. The embedded control library is that second client.
+
+  Protocol source of truth: codex-rs app-server-protocol (Rust, ~450 cross-crate
+  refs into codex-protocol). We do NOT vendor-copy it; we generate our types from the
+  self-contained JSON Schema bundle (`codex app-server generate-json-schema`, snapshot
+  in src/protocol/schema/upstream/) via typify. CI deterministically regenerates from the
+  pinned version; a scheduled job checks the latest available version for drift. A
+  sanitized, crate-owned set of recorded inner messages provides type-fidelity fixtures;
+  the Rust workspace never reads from experimentation/.
+
+  Key invariants:
+  - Read-only on reviewer requests: we RECEIVE approval/elicitation requests (fan-out)
+    but MUST NEVER respond or set approvalsReviewer on any request; the GUI is reviewer.
+  - The wire Thread has no reliable Desktop discriminator. Observe all active
+    shared-daemon threads, but require an explicit thread/turn target for every action.
+  - One WS feeds a synchronous authoritative reducer/store/action-waiter path, then two
+    bounded consumer topics (lifecycle and lossy deltas). All inbound frames carry a
+    monotonic receipt sequence; lifecycle gaps use bounded replay plus snapshot.
+  - Retry only requests proven not written. Written-but-unconfirmed actions return or
+    reconcile as OutcomeUnknown; never duplicate turn/start or turn/steer.
+  - Library-first: core is an embeddable lib; standalone daemon binary is a later add.
+  - No message broker or DLQ. Reconnect uses bounded reconciliation; storage is
+    in-memory, hard-bounded, and ephemeral.
+
+rules:
+  proposal:
+    - Keep under 2 pages; focus on why/what, not how.
+  specs:
+    - Scenarios MUST use exactly 4 hashtags (#### Scenario:).
+    - Use SHALL/MUST; every requirement has at least one scenario.

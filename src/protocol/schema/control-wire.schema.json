@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ControlWireTypes",
+  "type": "object",
+  "definitions": {
+    "ClientInfo": {
+      "type": "object",
+      "required": ["name", "title", "version"],
+      "properties": {
+        "name": {"type": "string"},
+        "title": {"type": "string"},
+        "version": {"type": "string"}
+      }
+    },
+    "InitializeParams": {
+      "type": "object",
+      "required": ["clientInfo"],
+      "properties": {
+        "clientInfo": {"$ref": "#/definitions/ClientInfo"},
+        "capabilities": {"type": "object", "additionalProperties": true}
+      }
+    },
+    "ThreadTarget": {
+      "type": "object",
+      "required": ["threadId"],
+      "properties": {"threadId": {"type": "string"}}
+    },
+    "TurnTarget": {
+      "type": "object",
+      "required": ["threadId", "turnId"],
+      "properties": {
+        "threadId": {"type": "string"},
+        "turnId": {"type": "string"}
+      }
+    },
+    "ThreadReadParams": {
+      "type": "object",
+      "required": ["threadId", "includeTurns"],
+      "properties": {
+        "threadId": {"type": "string"},
+        "includeTurns": {"type": "boolean"}
+      }
+    },
+    "ThreadListParams": {
+      "type": "object",
+      "properties": {
+        "cursor": {"type": ["string", "null"]},
+        "limit": {"type": "integer", "format": "uint32", "minimum": 1},
+        "sortKey": {"type": "string"},
+        "sortDirection": {"type": "string"}
+      }
+    },
+    "TurnSteerParams": {
+      "type": "object",
+      "required": ["threadId", "expectedTurnId", "input"],
+      "properties": {
+        "threadId": {"type": "string"},
+        "expectedTurnId": {"type": "string"},
+        "input": {"type": "array", "items": {"type": "object", "additionalProperties": true}}
+      }
+    },
+    "TurnStartParams": {
+      "type": "object",
+      "required": ["threadId", "input"],
+      "properties": {
+        "threadId": {"type": "string"},
+        "input": {"type": "array", "items": {"type": "object", "additionalProperties": true}}
+      }
+    }
+  },
+  "properties": {
+    "initialize": {"$ref": "#/definitions/InitializeParams"},
+    "thread": {"$ref": "#/definitions/ThreadTarget"},
+    "turn": {"$ref": "#/definitions/TurnTarget"},
+    "read": {"$ref": "#/definitions/ThreadReadParams"},
+    "list": {"$ref": "#/definitions/ThreadListParams"},
+    "steer": {"$ref": "#/definitions/TurnSteerParams"},
+    "start": {"$ref": "#/definitions/TurnStartParams"}
+  }
+}

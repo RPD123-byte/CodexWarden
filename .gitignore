@@ -1,0 +1,9 @@
+/target/
+/node_modules/
+.DS_Store
+
+# Local live-spike artifacts. The Rust library and its tests never depend on these.
+/experimentation/ChatGPT-lab.app/
+/experimentation/node_modules/
+/experimentation/*.log
+/experimentation/*.ndjson

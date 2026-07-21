@@ -1,0 +1,18 @@
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"clientInfo":{"name":"fixture-client","title":"Fixture Client","version":"0.1.0"},"capabilities":{}}}
+{"jsonrpc":"2.0","id":1,"result":{"userAgent":"codex-fixture"}}
+{"jsonrpc":"2.0","id":2,"error":{"code":-32602,"message":"fixture rejection"}}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"thread/started","params":{"thread":{"id":"thread-fixture","status":{"type":"idle"},"ephemeral":false}}}
+{"jsonrpc":"2.0","method":"thread/status/changed","params":{"threadId":"thread-fixture","status":{"type":"active"}}}
+{"jsonrpc":"2.0","method":"turn/started","params":{"threadId":"thread-fixture","turn":{"id":"turn-fixture","status":"inProgress"}}}
+{"jsonrpc":"2.0","method":"item/started","params":{"threadId":"thread-fixture","turnId":"turn-fixture","item":{"id":"item-fixture","type":"agentMessage"}}}
+{"jsonrpc":"2.0","method":"item/agentMessage/delta","params":{"threadId":"thread-fixture","turnId":"turn-fixture","itemId":"item-fixture","delta":"fixture text"}}
+{"jsonrpc":"2.0","method":"turn/diff/updated","params":{"threadId":"thread-fixture","turnId":"turn-fixture","diff":"fixture diff"}}
+{"jsonrpc":"2.0","method":"item/completed","params":{"threadId":"thread-fixture","turnId":"turn-fixture","item":{"id":"item-fixture","type":"agentMessage"}}}
+{"jsonrpc":"2.0","method":"turn/completed","params":{"threadId":"thread-fixture","turn":{"id":"turn-fixture","status":"completed"}}}
+{"jsonrpc":"2.0","id":"approval-fixture","method":"item/commandExecution/requestApproval","params":{"threadId":"thread-fixture","turnId":"turn-fixture","itemId":"item-fixture","reason":"fixture approval"}}
+{"jsonrpc":"2.0","id":"input-fixture","method":"item/tool/requestUserInput","params":{"threadId":"thread-fixture","turnId":"turn-fixture","itemId":"item-fixture","questions":[]}}
+{"jsonrpc":"2.0","method":"thread/tokenUsage/updated","params":{"threadId":"thread-fixture","turnId":"turn-fixture","tokenUsage":{"total":{"totalTokens":42}}}}
+{"jsonrpc":"2.0","method":"account/rateLimits/updated","params":{"rateLimits":{"primary":{"usedPercent":1.0}}}}
+{"jsonrpc":"2.0","method":"process/outputDelta","params":{"processId":"process-fixture","stream":"stdout","delta":"fixture output"}}
+{"jsonrpc":"2.0","method":"future/unknownNotification","params":{"threadId":"thread-fixture","payload":{"preserved":true}}}

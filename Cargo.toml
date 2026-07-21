@@ -1,0 +1,47 @@
+[workspace]
+resolver = "2"
+members = [
+  "src/protocol",
+  "src/transport",
+  "src/reducer",
+  "src/ingest",
+  "src/streaming",
+  "src/store",
+  "src/control",
+  "src/supervisor",
+  "src/core",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.91"
+
+[workspace.dependencies]
+anyhow = "1.0"
+async-trait = "0.1"
+futures-util = "0.3"
+protocol = { path = "src/protocol" }
+transport = { path = "src/transport" }
+reducer = { path = "src/reducer" }
+ingest = { path = "src/ingest" }
+streaming = { path = "src/streaming" }
+store = { path = "src/store" }
+control = { path = "src/control" }
+supervisor = { path = "src/supervisor" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tempfile = "3.23"
+thiserror = "2.0"
+tokio = { version = "1.48", features = ["full"] }
+tokio-tungstenite = "0.28"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+todo = "deny"

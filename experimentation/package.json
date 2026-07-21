@@ -1,0 +1,8 @@
+{
+  "name": "codex-app-control-experimentation",
+  "private": true,
+  "description": "Isolated JavaScript dependencies for live Codex app protocol experiments.",
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
