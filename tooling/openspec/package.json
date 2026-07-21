@@ -1,0 +1,12 @@
+{
+  "name": "codex-app-control-openspec-tools",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "openspec:validate": "cd ../.. && ./tooling/openspec/node_modules/.bin/openspec validate codex-control-daemon --strict"
+  },
+  "description": "Optional OpenSpec authoring tools; not a Rust or experimentation dependency.",
+  "devDependencies": {
+    "@fission-ai/openspec": "^1.6.0"
+  }
+}

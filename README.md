@@ -287,15 +287,17 @@ upstream method is sequenced and retained without crashing the connection.
 - `experimentation/` — isolated historical JavaScript spikes and local captures; never
   imported by the Rust workspace;
 - `openspec/` — design artifacts and behavioral specifications;
+- `tooling/openspec/` — isolated, optional Node installation for the pinned OpenSpec CLI;
 - `scripts/` — schema and repository maintenance tooling;
-- `package.json` — optional pinned OpenSpec authoring CLI only; not a runtime dependency.
 
 Generated local directories are intentionally untracked:
 
 - `target/` is Cargo's compiled output and incremental build cache. It can become large
   and is always safe to delete; Cargo recreates it.
-- `node_modules/` contains the optional OpenSpec CLI installation. The Rust library does
-  not use it; `npm ci` recreates it when specification authoring is needed.
+- `tooling/openspec/node_modules/` contains the optional OpenSpec CLI installation. The
+  Rust library does not use it; npm recreates it when specification authoring is needed.
+- `experimentation/node_modules/` contains only dependencies for the isolated JavaScript
+  probes. It is never used by the Rust workspace.
 - large app bundles, logs, and raw traffic captures under `experimentation/` remain local.
 
 ## Build and verify
@@ -314,8 +316,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 Optional OpenSpec authoring setup:
 
 ```sh
-npm ci
-npm run openspec:validate
+npm ci --prefix tooling/openspec
+npm run --prefix tooling/openspec openspec:validate
 ```
 
 `cargo run -p codex-control --example live_status_spike` performs the documented live
