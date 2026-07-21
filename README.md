@@ -1,4 +1,4 @@
-# Codex App Control
+# Codex Warden
 
 An embeddable Rust control plane for software that cooperates with a person using the
 Codex GUI.
@@ -81,7 +81,7 @@ Once this repository is available to Cargo, depend on the `codex-control` packag
 
 ```toml
 [dependencies]
-codex-control = { git = "https://github.com/RPD123-byte/codex-app-control", package = "codex-control" }
+codex-control = { git = "https://github.com/RPD123-byte/CodexWarden", package = "codex-control" }
 serde_json = "1"
 ```
 
