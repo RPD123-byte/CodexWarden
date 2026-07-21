@@ -1,13 +1,36 @@
 # Codex Warden
 
-An embeddable Rust control plane for software that cooperates with a person using the
-Codex GUI.
+**Make live Codex Desktop threads observable and controllable from Rust.**
 
-The library joins the same managed app-server daemon as the GUI, observes active Codex
-threads, retains bounded recent context, and exposes carefully correlated actions such
-as starting, steering, or interrupting an explicitly selected turn. It is a library, not
-a standalone daemon: another Rust package embeds it and decides what long-running
-process, policy, or user-facing copilot to build around it.
+Codex Warden is an embeddable Rust control plane for software that cooperates with a
+person using the Codex GUI. It joins the same managed app-server daemon as the GUI, so a
+host application can:
+
+- observe live thread, turn, item, and hook lifecycle events;
+- retain a bounded, queryable window of recent Codex activity;
+- build watcher agents that react to Codex activity or external signals;
+- start, steer, or interrupt an explicitly selected turn; and
+- keep the normal Codex Desktop interface at the center of the workflow.
+
+It is a library, not a standalone daemon or a prebuilt watcher. Another Rust package
+embeds it and supplies the long-running process, trigger, policy, or user-facing
+copilot.
+
+## What this makes possible
+
+A host can watch a live Desktop turn, correlate it with an external event, and then
+intervene against the exact thread and turn. Examples include:
+
+- a test or deployment watcher that steers a running turn when new evidence arrives;
+- a safety monitor that interrupts a known runaway turn;
+- an ambient copilot that surfaces status without replacing the GUI; and
+- a local daemon that reuses existing Codex automation against Desktop-owned work.
+
+Codex Warden also passes through lifecycle notifications such as `hook/started` and
+`hook/completed`, so embedded consumers can observe hooks already running in the shared
+session. It does **not** currently install or mutate Codex hook definitions at runtime.
+Mid-turn intervention is provided through `turn/steer` and `turn/interrupt`, not through
+dynamic hook injection.
 
 ## Why this exists
 
@@ -54,7 +77,7 @@ scrape the interface or spawn a competing private Codex engine.
 ```mermaid
 flowchart LR
     GUI["Codex / ChatGPT GUI"] <--> DAEMON["Managed app-server daemon"]
-    LIB["Embedded Codex App Control"] <--> DAEMON
+    LIB["Codex Warden"] <--> DAEMON
     DAEMON --> INGRESS["Sequenced authoritative ingress"]
     INGRESS --> REDUCER["Current thread / turn reducer"]
     INGRESS --> STORE["Bounded correlation store"]
