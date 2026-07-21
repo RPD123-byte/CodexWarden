@@ -141,6 +141,9 @@ impl MockAppServer {
     }
 }
 
+// `accept_hdr_async` fixes the callback's error type to tungstenite's HTTP response.
+// That upstream type is intentionally returned by value and cannot be boxed here.
+#[allow(clippy::result_large_err)]
 async fn serve_connection(
     stream: UnixStream,
     state: Arc<Mutex<State>>,
