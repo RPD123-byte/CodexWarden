@@ -1,5 +1,6 @@
 /target/
 /tooling/openspec/node_modules/
+/experimentation/
 .DS_Store
 
 # Local live-spike artifacts. The Rust library and its tests never depend on these.
