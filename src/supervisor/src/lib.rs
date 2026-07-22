@@ -331,7 +331,7 @@ impl Supervisor {
             time::sleep(Duration::from_millis(100)).await;
         }
         Err(SupervisorError::AttachmentUnverified(
-            "process environment never showed CODEX_APP_SERVER_USE_LOCAL_DAEMON=1".into(),
+            "ChatGPT did not establish an accepted connection to the managed daemon within the startup timeout".into(),
         ))
     }
 
@@ -342,7 +342,22 @@ impl Supervisor {
         self.ops
             .socket_users(&self.config.socket_path)
             .await
-            .is_ok_and(|users| users.lines().any(|line| line.contains("ChatGPT")))
+            .is_ok_and(|users| Self::has_accepted_socket_connection(&users))
+    }
+
+    /// `lsof <unix-socket-path>` reports the listener and accepted endpoints under the
+    /// daemon process. The GUI's peer endpoint is unnamed on macOS, so it does not appear
+    /// as a `ChatGPT` row for the path. The environment check above identifies the GUI;
+    /// more than one socket record proves that a client has actually connected.
+    fn has_accepted_socket_connection(users: &str) -> bool {
+        users
+            .lines()
+            .filter(|line| {
+                let line = line.trim();
+                !line.is_empty() && !line.starts_with("COMMAND")
+            })
+            .count()
+            > 1
     }
 
     pub async fn check(&self) -> MonitorEvent {
@@ -496,7 +511,7 @@ mod tests {
         async fn socket_users(&self, _socket: &Path) -> Result<String, String> {
             let state = self.state.lock().await;
             Ok(if state.attached {
-                "ChatGPT 123 user 42u unix /mock/socket".into()
+                "COMMAND PID USER FD TYPE NAME\ncodex 123 user 15u unix /mock/socket\ncodex 123 user 31u unix /mock/socket".into()
             } else {
                 String::new()
             })
@@ -552,6 +567,16 @@ mod tests {
             graceful_quit_timeout: Duration::from_millis(30),
             monitor_interval: Duration::from_millis(10),
         }
+    }
+
+    #[test]
+    fn accepted_socket_detection_matches_macos_lsof_shape() {
+        assert!(Supervisor::has_accepted_socket_connection(
+            "COMMAND PID USER FD TYPE NAME\ncodex 123 user 15u unix /mock/socket\ncodex 123 user 31u unix /mock/socket"
+        ));
+        assert!(!Supervisor::has_accepted_socket_connection(
+            "COMMAND PID USER FD TYPE NAME\ncodex 123 user 15u unix /mock/socket"
+        ));
     }
 
     #[tokio::test]
