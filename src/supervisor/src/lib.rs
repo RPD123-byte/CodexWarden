@@ -20,6 +20,8 @@ pub struct SupervisorConfig {
     pub standalone_codex: PathBuf,
     pub socket_path: PathBuf,
     pub gui_executable: PathBuf,
+    /// Gracefully restart the GUI during initialization even when it is already attached.
+    pub restart_gui_on_initialize: bool,
     pub startup_timeout: Duration,
     pub graceful_quit_timeout: Duration,
     pub monitor_interval: Duration,
@@ -34,6 +36,7 @@ impl Default for SupervisorConfig {
             standalone_codex: home.join(".codex/packages/standalone/current/codex"),
             socket_path: home.join(".codex/app-server-control/app-server-control.sock"),
             gui_executable: PathBuf::from("/Applications/ChatGPT.app/Contents/MacOS/ChatGPT"),
+            restart_gui_on_initialize: true,
             startup_timeout: Duration::from_secs(10),
             graceful_quit_timeout: Duration::from_secs(8),
             monitor_interval: Duration::from_secs(5),
@@ -111,6 +114,23 @@ pub trait ProcessOps: Send + Sync {
 #[derive(Default)]
 pub struct RealProcessOps;
 
+fn child_command(program: &Path, args: &[&str], env: &[(&str, &str)]) -> Command {
+    let mut command = Command::new(program);
+    command
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    for (key, value) in env {
+        command.env(key, value);
+    }
+    // A GUI/daemon launched by a foreground experiment must not inherit its terminal
+    // process group. Otherwise Ctrl-C (or another group signal) also reaches ChatGPT.
+    #[cfg(unix)]
+    command.process_group(0);
+    command
+}
+
 #[async_trait]
 impl ProcessOps for RealProcessOps {
     async fn exists(&self, path: &Path) -> bool {
@@ -161,15 +181,7 @@ impl ProcessOps for RealProcessOps {
         args: &[&str],
         env: &[(&str, &str)],
     ) -> Result<(), String> {
-        let mut command = Command::new(program);
-        command
-            .args(args)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-        for (key, value) in env {
-            command.env(key, value);
-        }
+        let mut command = child_command(program, args, env);
         command.spawn().map_err(|e| e.to_string())?;
         Ok(())
     }
@@ -242,7 +254,7 @@ impl Supervisor {
             .ps_environment()
             .await
             .map_err(SupervisorError::Inspection)?;
-        if !self.gui_attached(&processes).await {
+        if self.config.restart_gui_on_initialize || !self.gui_attached(&processes).await {
             if gui_running(&processes, &self.config.gui_executable) {
                 self.ops
                     .graceful_quit_chatgpt()
@@ -477,6 +489,7 @@ mod tests {
         stubborn: bool,
         compatible: bool,
         spawns: Vec<String>,
+        quit_requests: usize,
     }
     #[derive(Default)]
     struct FakeOps {
@@ -550,6 +563,7 @@ mod tests {
         }
         async fn graceful_quit_chatgpt(&self) -> Result<(), String> {
             let mut state = self.state.lock().await;
+            state.quit_requests += 1;
             if !state.stubborn {
                 state.gui = false;
                 state.attached = false;
@@ -563,6 +577,7 @@ mod tests {
             standalone_codex: "/mock/codex".into(),
             gui_executable: "/mock/ChatGPT".into(),
             socket_path: "/mock/socket".into(),
+            restart_gui_on_initialize: false,
             startup_timeout: Duration::from_millis(80),
             graceful_quit_timeout: Duration::from_millis(30),
             monitor_interval: Duration::from_millis(10),
@@ -577,6 +592,27 @@ mod tests {
         assert!(!Supervisor::has_accepted_socket_connection(
             "COMMAND PID USER FD TYPE NAME\ncodex 123 user 15u unix /mock/socket"
         ));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn supervisor_children_run_in_their_own_process_group() {
+        let mut command = child_command(Path::new("/bin/sleep"), &["5"], &[]);
+        let mut child = command.spawn().unwrap();
+        let pid = child.id().unwrap();
+        let output = Command::new("/bin/ps")
+            .args(["-o", "pgid=", "-p", &pid.to_string()])
+            .output()
+            .await
+            .unwrap();
+        let process_group: u32 = String::from_utf8(output.stdout)
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        let _ = child.kill().await;
+
+        assert_eq!(process_group, pid);
     }
 
     #[tokio::test]
@@ -609,6 +645,32 @@ mod tests {
         let state = supervisor.initialize().await.unwrap();
         assert_eq!(state.daemon_ownership, DaemonOwnership::Started);
         assert!(ops.state.lock().await.attached);
+    }
+
+    #[tokio::test]
+    async fn requested_startup_restart_relaunches_attached_gui_but_shutdown_leaves_it_running() {
+        let ops = Arc::new(FakeOps::default());
+        *ops.state.lock().await = FakeState {
+            standalone: true,
+            gui: true,
+            daemon: true,
+            attached: true,
+            compatible: true,
+            ..FakeState::default()
+        };
+        let mut restart_config = config();
+        restart_config.restart_gui_on_initialize = true;
+        let supervisor = Supervisor::with_ops(restart_config, ops.clone());
+
+        let state = supervisor.initialize().await.unwrap();
+        let state = supervisor.shutdown_state(state);
+        let process_state = ops.state.lock().await;
+
+        assert_eq!(process_state.quit_requests, 1);
+        assert_eq!(process_state.spawns, vec!["/mock/ChatGPT"]);
+        assert!(process_state.gui);
+        assert!(process_state.attached);
+        assert!(state.daemon_left_running);
     }
 
     #[tokio::test]

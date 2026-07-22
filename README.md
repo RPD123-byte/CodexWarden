@@ -263,13 +263,19 @@ interrupt evidence window is three seconds, followed by conservative reconciliat
 1. verifies the standalone Codex installation;
 2. attaches to an existing managed daemon or starts one only when none exists;
 3. checks daemon/GUI compatibility;
-4. preserves a GUI already attached in daemon mode;
-5. otherwise requests a graceful quit and launches the GUI with
+4. gracefully restarts the GUI on initialization by default so it is attached to the
+   managed daemon; set `SupervisorConfig::restart_gui_on_initialize = false` to preserve
+   an already-attached GUI;
+5. otherwise requests a graceful quit and launches the GUI in its own process group with
    `CODEX_APP_SERVER_USE_LOCAL_DAEMON=1`;
 6. continues monitoring daemon and GUI health.
 
 Set `manage_gui = false` when a test, another owner, or an embedding application already
 manages the environment.
+
+Library shutdown stops its own monitoring, subscriptions, and transport only. It leaves the
+GUI and shared daemon running. Startup restart and shutdown ownership are intentionally
+separate: `supervisor.restart_gui_on_initialize` controls only initialization.
 
 Transport defaults are a 3-second connect timeout, 30-second read-idle probe threshold,
 15-second request timeout, and exponential reconnect delay from 100 ms to 5 seconds.
