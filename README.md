@@ -266,8 +266,8 @@ interrupt evidence window is three seconds, followed by conservative reconciliat
 4. gracefully restarts the GUI on initialization by default so it is attached to the
    managed daemon; set `SupervisorConfig::restart_gui_on_initialize = false` to preserve
    an already-attached GUI;
-5. otherwise requests a graceful quit and launches the GUI in its own process group with
-   `CODEX_APP_SERVER_USE_LOCAL_DAEMON=1`;
+5. otherwise requests a graceful quit and launches the GUI through macOS Launch Services
+   with `CODEX_APP_SERVER_USE_LOCAL_DAEMON=1`, keeping it outside the embedding process tree;
 6. continues monitoring daemon and GUI health.
 
 Set `manage_gui = false` when a test, another owner, or an embedding application already

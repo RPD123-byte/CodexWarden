@@ -217,6 +217,25 @@ impl Supervisor {
         Self { config, ops }
     }
 
+    async fn launch_gui(&self) -> Result<(), String> {
+        let application = application_bundle(&self.config.gui_executable);
+        let application = application
+            .to_str()
+            .ok_or_else(|| "ChatGPT application path is not valid UTF-8".to_string())?;
+        // Launch Services owns the GUI process. A terminal or process manager can then
+        // tear down the embedding process tree without treating ChatGPT as its child.
+        self.ops
+            .spawn(
+                Path::new("/usr/bin/open"),
+                &["-a", application],
+                &[
+                    ("CODEX_APP_SERVER_USE_LOCAL_DAEMON", "1"),
+                    ("CODEX_APP_SERVER_FORCE_CLI", "0"),
+                ],
+            )
+            .await
+    }
+
     pub async fn initialize(&self) -> Result<SupervisionState, SupervisorError> {
         if !self.ops.exists(&self.config.standalone_codex).await {
             return Err(SupervisorError::MissingStandalone {
@@ -279,15 +298,7 @@ impl Supervisor {
                     ));
                 }
             }
-            self.ops
-                .spawn(
-                    &self.config.gui_executable,
-                    &[],
-                    &[
-                        ("CODEX_APP_SERVER_USE_LOCAL_DAEMON", "1"),
-                        ("CODEX_APP_SERVER_FORCE_CLI", "0"),
-                    ],
-                )
+            self.launch_gui()
                 .await
                 .map_err(SupervisorError::UserActionRequired)?;
             self.wait_for_gui_attachment().await?;
@@ -404,18 +415,7 @@ impl Supervisor {
         }
         if !self.gui_attached(&processes).await {
             if !gui_running(&processes, &self.config.gui_executable) {
-                return match self
-                    .ops
-                    .spawn(
-                        &self.config.gui_executable,
-                        &[],
-                        &[
-                            ("CODEX_APP_SERVER_USE_LOCAL_DAEMON", "1"),
-                            ("CODEX_APP_SERVER_FORCE_CLI", "0"),
-                        ],
-                    )
-                    .await
-                {
+                return match self.launch_gui().await {
                     Ok(()) => MonitorEvent::GuiRestarted,
                     Err(error) => MonitorEvent::UserActionRequired(error),
                 };
@@ -436,8 +436,12 @@ impl Supervisor {
         tokio::spawn(async move {
             loop {
                 tokio::select! {
+                    biased;
                     changed = shutdown.changed() => if changed.is_err() || *shutdown.borrow() { break; },
-                    () = time::sleep(this.config.monitor_interval) => { let _ = events.send(this.check().await); }
+                    event = async {
+                        time::sleep(this.config.monitor_interval).await;
+                        this.check().await
+                    } => { let _ = events.send(event); }
                 }
             }
         });
@@ -449,6 +453,13 @@ impl Supervisor {
         state.daemon_left_running = true;
         state
     }
+}
+
+fn application_bundle(executable: &Path) -> &Path {
+    executable
+        .ancestors()
+        .find(|path| path.extension().is_some_and(|extension| extension == "app"))
+        .unwrap_or(executable)
 }
 
 fn has_managed_daemon(processes: &str, codex: &Path) -> bool {
@@ -553,7 +564,9 @@ mod tests {
         ) -> Result<(), String> {
             let mut state = self.state.lock().await;
             state.spawns.push(program.display().to_string());
-            if program.to_string_lossy().contains("ChatGPT") {
+            if program == Path::new("/usr/bin/open")
+                || program.to_string_lossy().contains("ChatGPT")
+            {
                 state.gui = true;
                 state.attached = env.contains(&("CODEX_APP_SERVER_USE_LOCAL_DAEMON", "1"));
             } else {
@@ -592,6 +605,16 @@ mod tests {
         assert!(!Supervisor::has_accepted_socket_connection(
             "COMMAND PID USER FD TYPE NAME\ncodex 123 user 15u unix /mock/socket"
         ));
+    }
+
+    #[test]
+    fn launch_services_receives_the_application_bundle_instead_of_the_executable() {
+        assert_eq!(
+            application_bundle(Path::new(
+                "/Applications/ChatGPT.app/Contents/MacOS/ChatGPT"
+            )),
+            Path::new("/Applications/ChatGPT.app")
+        );
     }
 
     #[cfg(unix)]
@@ -667,7 +690,7 @@ mod tests {
         let process_state = ops.state.lock().await;
 
         assert_eq!(process_state.quit_requests, 1);
-        assert_eq!(process_state.spawns, vec!["/mock/ChatGPT"]);
+        assert_eq!(process_state.spawns, vec!["/usr/bin/open"]);
         assert!(process_state.gui);
         assert!(process_state.attached);
         assert!(state.daemon_left_running);
